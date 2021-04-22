@@ -1,6 +1,6 @@
 use crate::core::MessageHandle;
-use crate::menu::{EventDrivenMessageContainer, EventDrivenMessagesRef, MessageRef};
-use crate::{Error, Result};
+use crate::menu::{get_listeners_from_context, MessageRef};
+use crate::Result;
 use serenity::client::Context;
 use serenity::model::channel::Reaction;
 use serenity::model::id::{ChannelId, MessageId};
@@ -10,7 +10,7 @@ use tokio::time::Duration;
 static UPDATE_INTERVAL_SECS: u64 = 5;
 
 /// Starts the loop to handle message updates
-pub async fn start_update_loop(ctx: &Context) {
+pub async fn start_update_loop(ctx: &Context) -> Result<()> {
     let event_messages = get_listeners_from_context(ctx)
         .await
         .expect("Failed to get event message container");
@@ -51,6 +51,8 @@ pub async fn start_update_loop(ctx: &Context) {
             tokio::time::sleep(Duration::from_secs(UPDATE_INTERVAL_SECS)).await;
         }
     });
+
+    Ok(())
 }
 
 /// To be fired from the serenity handler when a message was deleted
@@ -157,13 +159,4 @@ pub async fn handle_reaction_remove(ctx: &Context, reaction: &Reaction) -> Resul
     }
 
     Ok(())
-}
-
-pub async fn get_listeners_from_context(ctx: &Context) -> Result<EventDrivenMessagesRef> {
-    let data = ctx.data.read().await;
-    let listeners = data
-        .get::<EventDrivenMessageContainer>()
-        .ok_or(Error::Uninitialized)?;
-    log::trace!("Returning listener");
-    Ok(listeners.clone())
 }

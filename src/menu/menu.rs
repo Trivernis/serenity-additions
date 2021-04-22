@@ -1,10 +1,9 @@
 use crate::core::MessageHandle;
 use crate::error::{Error, Result};
-use crate::event_handlers::get_listeners_from_context;
 use crate::menu::controls::{close_menu, next_page, previous_page, toggle_help};
 use crate::menu::traits::EventDrivenMessage;
 use crate::menu::typedata::HelpActiveContainer;
-use crate::menu::{EventDrivenMessagesRef, Page};
+use crate::menu::{get_listeners_from_context, EventDrivenMessagesRef, Page};
 use futures::FutureExt;
 use serenity::async_trait;
 use serenity::client::Context;

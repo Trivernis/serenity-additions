@@ -1,8 +1,7 @@
 use crate::error::{Error, Result};
-use crate::event_handlers::get_listeners_from_context;
 use crate::menu::menu::Menu;
 use crate::menu::typedata::HelpActiveContainer;
-use crate::menu::ActionContainer;
+use crate::menu::{get_listeners_from_context, ActionContainer};
 use serde_json::json;
 use serde_json::Value;
 use serenity::client::Context;
