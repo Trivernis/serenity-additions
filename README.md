@@ -70,4 +70,4 @@ pub async fn create_ephemeral_message(ctx: &Context, channel_id: ChannelId) -> R
 
 ## License
 
-MIT
+Apache-2.0
