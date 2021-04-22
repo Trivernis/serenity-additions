@@ -239,7 +239,7 @@ impl Default for MenuBuilder {
 }
 
 impl MenuBuilder {
-    /// Creates a new paginaton menu
+    /// Creates a new pagination menu
     pub fn new_paginator() -> Self {
         log::debug!("Creating new paginator");
         let mut controls = HashMap::new();

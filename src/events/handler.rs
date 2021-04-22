@@ -33,13 +33,14 @@ impl<T> EventCallback<T> {
 /// use serenity_rich_interaction::events::RichEventHandler;
 /// use serenity::model::event;
 /// use serenity::client::Client;
+/// use serenity_rich_interaction::RegisterRichInteractions;
 ///
 /// let mut handler = RichEventHandler::default();
 /// handler.add_event(|ctx, e: &event::ReadyEvent| Box::pin(async move {
 ///     println!("Ready event received");
 ///     Ok(())
 /// }));
-/// let client = Client::builder("TOKEN").raw_event_handler(handler).await?;
+/// let client = Client::builder("TOKEN").register_rich_interactions_with(handler).await?;
 /// // ...
 /// ```
 pub struct RichEventHandler {

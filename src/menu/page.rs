@@ -17,7 +17,8 @@ pub enum Page<'b> {
 }
 
 impl<'b> Page<'b> {
-    /// Creates a new page with the given builder function
+    /// Creates a new page with the given builder function that creates a page
+    /// each time it is accessed
     pub fn new_builder<F: 'static>(builder_fn: F) -> Self
     where
         F: Fn() -> MessageBuildOutput<'b> + Send + Sync,
