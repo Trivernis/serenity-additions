@@ -206,7 +206,7 @@ impl<'a> EventDrivenMessage for Menu<'a> {
         log::debug!("Deleting user reaction.");
         reaction.delete(ctx).await?;
         if let Some(owner) = self.owner {
-            if owner == reaction.user_id.unwrap() {
+            if owner != reaction.user_id.unwrap() {
                 log::debug!("Menu has an owner and the reaction is not from the owner of the menu");
                 return Ok(());
             }
