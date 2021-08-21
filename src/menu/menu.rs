@@ -9,7 +9,7 @@ use serenity::async_trait;
 use serenity::client::Context;
 use serenity::http::Http;
 use serenity::model::channel::{Message, Reaction, ReactionType};
-use serenity::model::id::ChannelId;
+use serenity::model::id::{ChannelId, UserId};
 use serenity::prelude::{TypeMap, TypeMapKey};
 use std::collections::HashMap;
 use std::future::Future;
@@ -74,6 +74,7 @@ pub struct Menu<'a> {
     pub sticky: bool,
     pub data: TypeMap,
     pub help_entries: HashMap<String, String>,
+    owner: Option<UserId>,
     closed: bool,
     listeners: EventDrivenMessagesRef,
 }
@@ -204,6 +205,12 @@ impl<'a> EventDrivenMessage for Menu<'a> {
 
         log::debug!("Deleting user reaction.");
         reaction.delete(ctx).await?;
+        if let Some(owner) = self.owner {
+            if owner == reaction.user_id.unwrap() {
+                log::debug!("Menu has an owner and the reaction is not from the owner of the menu");
+                return Ok(());
+            }
+        }
         if let Some(control) = self.controls.get(&emoji_string).cloned() {
             log::debug!("Running control");
             control.run(ctx, self, reaction).await?;
@@ -222,6 +229,7 @@ pub struct MenuBuilder {
     sticky: bool,
     data: TypeMap,
     help_entries: HashMap<String, String>,
+    owner: Option<UserId>,
 }
 
 impl Default for MenuBuilder {
@@ -234,6 +242,7 @@ impl Default for MenuBuilder {
             sticky: false,
             data: TypeMap::new(),
             help_entries: HashMap::new(),
+            owner: None,
         }
     }
 }
@@ -373,6 +382,14 @@ impl MenuBuilder {
             .add_data::<HelpActiveContainer>(Arc::new(AtomicBool::new(false)))
     }
 
+    /// Sets the owner of the menu
+    /// if it's set only the owner can interact with the menu
+    pub fn owner(mut self, user_id: UserId) -> Self {
+        self.owner = Some(user_id);
+
+        self
+    }
+
     /// builds the menu
     pub async fn build(
         self,
@@ -414,6 +431,7 @@ impl MenuBuilder {
             sticky: self.sticky,
             data: self.data,
             help_entries: self.help_entries,
+            owner: self.owner,
         };
 
         log::debug!("Storing menu to listeners...");
