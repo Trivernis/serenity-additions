@@ -20,7 +20,7 @@ pub async fn start_update_loop(ctx: &Context) -> Result<()> {
     tokio::task::spawn(async move {
         loop {
             {
-                tracing::debug!("Updating messages...");
+                tracing::trace!("Updating messages...");
                 let mut frozen_messages = Vec::new();
 
                 for entry in event_messages.iter() {
@@ -35,7 +35,7 @@ pub async fn start_update_loop(ctx: &Context) -> Result<()> {
                 for key in frozen_messages {
                     event_messages.remove(&key);
                 }
-                tracing::debug!("Messages updated");
+                tracing::trace!("Messages updated");
             }
             tokio::time::sleep(Duration::from_secs(UPDATE_INTERVAL_SECS)).await;
         }
