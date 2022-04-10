@@ -1,5 +1,6 @@
 use crate::events::event_callbacks;
 use crate::Result;
+use futures::future;
 use serenity::async_trait;
 use serenity::client::{Context, RawEventHandler};
 use serenity::model::event;
@@ -51,20 +52,18 @@ impl RichEventHandler {
     /// Handles a generic event
     #[tracing::instrument(level = "debug", skip_all)]
     async fn handle_event<T: 'static + Send + Sync>(&self, ctx: Context, value: T) {
-        let callbacks = self.callbacks.clone();
-
-        tokio::spawn(async move {
-            let value = value;
-            if let Some(callbacks) = callbacks.get(&TypeId::of::<T>()) {
-                for callback in callbacks {
-                    if let Some(cb) = callback.downcast_ref::<EventCallback<T>>() {
-                        if let Err(e) = cb.run(&ctx, &value).await {
-                            tracing::error!("Error in event callback: {:?}", e);
-                        }
-                    }
-                }
-            }
-        });
+        let value = value;
+        if let Some(callbacks) = self.callbacks.get(&TypeId::of::<T>()) {
+            let futures = callbacks
+                .iter()
+                .filter_map(|cb| cb.downcast_ref::<EventCallback<T>>())
+                .map(|cb| cb.run(&ctx, &value));
+            future::join_all(futures)
+                .await
+                .into_iter()
+                .filter_map(Result::err)
+                .for_each(|e| tracing::error!("Error in event callback: {:?}", e));
+        }
     }
 
     pub fn add_event<T: 'static, F: 'static>(&mut self, cb: F) -> &mut Self

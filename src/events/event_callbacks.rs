@@ -1,5 +1,5 @@
 use crate::core::MessageHandle;
-use crate::menu::{get_listeners_from_context, MessageRef};
+use crate::menu::get_listeners_from_context;
 use crate::Result;
 use serenity::client::Context;
 use serenity::model::channel::Reaction;
@@ -21,30 +21,19 @@ pub async fn start_update_loop(ctx: &Context) -> Result<()> {
         loop {
             {
                 tracing::debug!("Updating messages...");
-                let messages = {
-                    let msgs_lock = event_messages.lock().await;
-
-                    msgs_lock
-                        .iter()
-                        .map(|(k, v)| (*k, v.clone()))
-                        .collect::<Vec<(MessageHandle, MessageRef)>>()
-                };
                 let mut frozen_messages = Vec::new();
 
-                for (key, msg) in messages {
-                    let mut msg = msg.lock().await;
+                for entry in event_messages.iter() {
+                    let mut msg = entry.value().lock().await;
                     if let Err(e) = msg.update(&http).await {
                         tracing::error!("Failed to update message: {:?}", e);
                     }
                     if msg.is_frozen() {
-                        frozen_messages.push(key);
+                        frozen_messages.push(*entry.key());
                     }
                 }
-                {
-                    let mut msgs_lock = event_messages.lock().await;
-                    for key in frozen_messages {
-                        msgs_lock.remove(&key);
-                    }
+                for key in frozen_messages {
+                    event_messages.remove(&key);
                 }
                 tracing::debug!("Messages updated");
             }
@@ -63,16 +52,14 @@ pub async fn handle_message_delete(
     message_id: MessageId,
 ) -> Result<()> {
     let mut affected_messages = Vec::new();
-    {
-        let listeners = get_listeners_from_context(ctx).await?;
-        let mut listeners_lock = listeners.lock().await;
+    let listeners = get_listeners_from_context(ctx).await?;
+    let handle = MessageHandle::new(channel_id, message_id);
 
-        let handle = MessageHandle::new(channel_id, message_id);
-        if let Some(msg) = listeners_lock.get(&handle) {
-            affected_messages.push(Arc::clone(msg));
-            listeners_lock.remove(&handle);
-        }
+    if let Some(msg) = listeners.get(&handle) {
+        affected_messages.push(msg.value().clone());
+        listeners.remove(&handle);
     }
+
     for msg in affected_messages {
         let mut msg = msg.lock().await;
         msg.on_deleted(ctx).await?;
@@ -89,18 +76,17 @@ pub async fn handle_message_delete_bulk(
     message_ids: &Vec<MessageId>,
 ) -> Result<()> {
     let mut affected_messages = Vec::new();
-    {
-        let listeners = get_listeners_from_context(ctx).await?;
-        let mut listeners_lock = listeners.lock().await;
 
-        for message_id in message_ids {
-            let handle = MessageHandle::new(channel_id, *message_id);
-            if let Some(msg) = listeners_lock.get_mut(&handle) {
-                affected_messages.push(Arc::clone(msg));
-                listeners_lock.remove(&handle);
-            }
+    let listeners = get_listeners_from_context(ctx).await?;
+
+    for message_id in message_ids {
+        let handle = MessageHandle::new(channel_id, *message_id);
+        if let Some(msg) = listeners.get(&handle) {
+            affected_messages.push(msg.value().clone());
+            listeners.remove(&handle);
         }
     }
+
     for msg in affected_messages {
         let mut msg = msg.lock().await;
         msg.on_deleted(ctx).await?;
@@ -112,17 +98,14 @@ pub async fn handle_message_delete_bulk(
 /// Fired when a reaction was added to a message
 #[tracing::instrument(level = "debug", skip(ctx))]
 pub async fn handle_reaction_add(ctx: &Context, reaction: &Reaction) -> Result<()> {
+    let listeners = get_listeners_from_context(ctx).await?;
+    let handle = MessageHandle::new(reaction.channel_id, reaction.message_id);
+
     let mut affected_messages = Vec::new();
-    {
-        let listeners = get_listeners_from_context(ctx).await?;
-        let mut listeners_lock = listeners.lock().await;
-
-        let handle = MessageHandle::new(reaction.channel_id, reaction.message_id);
-
-        if let Some(msg) = listeners_lock.get_mut(&handle) {
-            affected_messages.push(Arc::clone(&msg));
-        }
+    if let Some(msg) = listeners.get(&handle) {
+        affected_messages.push(msg.value().clone());
     }
+
     for msg in affected_messages {
         let mut msg = msg.lock().await;
         msg.on_reaction_add(ctx, reaction.clone()).await?;
@@ -134,17 +117,14 @@ pub async fn handle_reaction_add(ctx: &Context, reaction: &Reaction) -> Result<(
 /// Fired when a reaction was added to a message
 #[tracing::instrument(level = "debug", skip(ctx))]
 pub async fn handle_reaction_remove(ctx: &Context, reaction: &Reaction) -> Result<()> {
+    let listeners = get_listeners_from_context(ctx).await?;
+    let handle = MessageHandle::new(reaction.channel_id, reaction.message_id);
+
     let mut affected_messages = Vec::new();
-    {
-        let listeners = get_listeners_from_context(ctx).await?;
-        let mut listeners_lock = listeners.lock().await;
-
-        let handle = MessageHandle::new(reaction.channel_id, reaction.message_id);
-
-        if let Some(msg) = listeners_lock.get_mut(&handle) {
-            affected_messages.push(Arc::clone(&msg));
-        }
+    if let Some(msg) = listeners.get(&handle) {
+        affected_messages.push(msg.value().clone());
     }
+
     for msg in affected_messages {
         let mut msg = msg.lock().await;
         msg.on_reaction_remove(ctx, reaction.clone()).await?;

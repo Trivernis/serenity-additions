@@ -2,14 +2,14 @@ use crate::error::Result;
 use crate::events::RichEventHandler;
 use crate::menu::traits::EventDrivenMessage;
 use crate::menu::EventDrivenMessageContainer;
+use dashmap::DashMap;
 use serenity::client::ClientBuilder;
 use serenity::http::Http;
 use serenity::model::channel::Message;
 use serenity::model::id::{ChannelId, MessageId};
-use std::collections::HashMap;
+use std::ops::{Deref, DerefMut};
 use std::sync::Arc;
 use std::time::Duration;
-use tokio::sync::Mutex;
 
 pub static SHORT_TIMEOUT: Duration = Duration::from_secs(5);
 pub static MEDIUM_TIMEOUT: Duration = Duration::from_secs(20);
@@ -17,6 +17,28 @@ pub static LONG_TIMEOUT: Duration = Duration::from_secs(60);
 pub static EXTRA_LONG_TIMEOUT: Duration = Duration::from_secs(600);
 
 pub type BoxedEventDrivenMessage = Box<dyn EventDrivenMessage>;
+
+pub struct BoxedMessage(pub BoxedEventDrivenMessage);
+
+impl<T: EventDrivenMessage + 'static> From<Box<T>> for BoxedMessage {
+    fn from(m: Box<T>) -> Self {
+        Self(m as Box<dyn EventDrivenMessage>)
+    }
+}
+
+impl Deref for BoxedMessage {
+    type Target = BoxedEventDrivenMessage;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for BoxedMessage {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
 
 #[derive(Copy, Clone, Debug, PartialOrd, PartialEq, Eq, Hash)]
 pub struct MessageHandle {
@@ -61,7 +83,7 @@ impl<'a> RegisterRichInteractions for ClientBuilder<'a> {
 
     /// Registers the rich interactions with a custom rich event handler
     fn register_rich_interactions_with(self, rich_handler: RichEventHandler) -> Self {
-        self.type_map_insert::<EventDrivenMessageContainer>(Arc::new(Mutex::new(HashMap::new())))
+        self.type_map_insert::<EventDrivenMessageContainer>(Arc::new(DashMap::new()))
             .raw_event_handler(rich_handler)
     }
 }

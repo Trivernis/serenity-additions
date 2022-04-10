@@ -1,16 +1,16 @@
-use crate::core::{BoxedEventDrivenMessage, MessageHandle};
+use crate::core::{BoxedMessage, MessageHandle};
 use crate::Error;
 use crate::Result;
+use dashmap::DashMap;
 use serenity::client::Context;
 use serenity::prelude::TypeMapKey;
-use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 
 /// Container to store event driven messages in the serenity context data
 pub struct EventDrivenMessageContainer;
-pub type MessageRef = Arc<Mutex<BoxedEventDrivenMessage>>;
-pub type EventDrivenMessagesRef = Arc<Mutex<HashMap<MessageHandle, MessageRef>>>;
+pub type MessageRef = Arc<Mutex<BoxedMessage>>;
+pub type EventDrivenMessagesRef = Arc<DashMap<MessageHandle, MessageRef>>;
 
 impl TypeMapKey for EventDrivenMessageContainer {
     type Value = EventDrivenMessagesRef;

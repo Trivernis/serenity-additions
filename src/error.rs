@@ -11,6 +11,9 @@ pub enum Error {
     #[error("Serenity Rich Interaction is not fully initialized")]
     Uninitialized,
 
+    #[error("the cache is not available, therefore some required data is missing")]
+    NoCache,
+
     #[error("{0}")]
     Msg(String),
 }

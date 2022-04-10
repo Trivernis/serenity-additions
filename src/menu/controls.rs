@@ -35,10 +35,9 @@ pub async fn previous_page(ctx: &Context, menu: &mut Menu<'_>, _: Reaction) -> R
 #[tracing::instrument(level = "debug", skip_all)]
 pub async fn close_menu(ctx: &Context, menu: &mut Menu<'_>, _: Reaction) -> Result<()> {
     menu.close(ctx.http()).await?;
-    let listeners = get_listeners_from_context(&ctx).await?;
-    let mut listeners_lock = listeners.lock().await;
     let message = menu.message.read().await;
-    listeners_lock.remove(&*message);
+    let listeners = get_listeners_from_context(&ctx).await?;
+    listeners.remove(&*message);
 
     Ok(())
 }
