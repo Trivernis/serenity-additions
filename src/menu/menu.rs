@@ -66,7 +66,7 @@ impl ActionContainer {
 
 /// A menu message
 pub struct Menu<'a> {
-    pub(crate) message: Arc<RwLock<MessageHandle>>,
+    pub message: Arc<RwLock<MessageHandle>>,
     pub pages: Vec<Page<'a>>,
     pub current_page: usize,
     pub(crate) controls: HashMap<String, ActionContainer>,
