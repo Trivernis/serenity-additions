@@ -10,8 +10,8 @@ use serenity::model::channel::Reaction;
 use std::sync::atomic::Ordering;
 
 /// Shows the next page in the menu
+#[tracing::instrument(level = "debug", skip_all)]
 pub async fn next_page(ctx: &Context, menu: &mut Menu<'_>, _: Reaction) -> Result<()> {
-    log::debug!("Showing next page");
     menu.current_page = (menu.current_page + 1) % menu.pages.len();
     display_page(ctx, menu).await?;
 
@@ -19,8 +19,8 @@ pub async fn next_page(ctx: &Context, menu: &mut Menu<'_>, _: Reaction) -> Resul
 }
 
 /// Shows the previous page in the menu
+#[tracing::instrument(level = "debug", skip_all)]
 pub async fn previous_page(ctx: &Context, menu: &mut Menu<'_>, _: Reaction) -> Result<()> {
-    log::debug!("Showing previous page");
     if menu.current_page == 0 {
         menu.current_page = menu.pages.len() - 1;
     } else {
@@ -32,8 +32,8 @@ pub async fn previous_page(ctx: &Context, menu: &mut Menu<'_>, _: Reaction) -> R
 }
 
 /// Shows the previous page in the menu
+#[tracing::instrument(level = "debug", skip_all)]
 pub async fn close_menu(ctx: &Context, menu: &mut Menu<'_>, _: Reaction) -> Result<()> {
-    log::debug!("Closing menu");
     menu.close(ctx.http()).await?;
     let listeners = get_listeners_from_context(&ctx).await?;
     let mut listeners_lock = listeners.lock().await;
@@ -43,8 +43,9 @@ pub async fn close_menu(ctx: &Context, menu: &mut Menu<'_>, _: Reaction) -> Resu
     Ok(())
 }
 
+/// Shows a help menu
+#[tracing::instrument(level = "debug", skip_all)]
 pub async fn toggle_help(ctx: &Context, menu: &mut Menu<'_>, _: Reaction) -> Result<()> {
-    log::debug!("Displaying help");
     let show_help = menu
         .data
         .get::<HelpActiveContainer>()
@@ -63,7 +64,7 @@ pub async fn toggle_help(ctx: &Context, menu: &mut Menu<'_>, _: Reaction) -> Res
         .get()
         .await?;
     let mut message = menu.get_message(ctx.http()).await?;
-    log::debug!("Building help entries");
+    tracing::debug!("Building help entries");
     let mut help_entries = menu
         .help_entries
         .iter()
@@ -75,7 +76,7 @@ pub async fn toggle_help(ctx: &Context, menu: &mut Menu<'_>, _: Reaction) -> Res
         .map(|(_, e, h)| format!(" - {} {}", e, h))
         .collect::<Vec<String>>()
         .join("\n");
-    log::trace!("Help message is {}", help_message);
+    tracing::trace!("Help message is {}", help_message);
 
     message
         .edit(ctx, |m| {
@@ -104,15 +105,16 @@ pub async fn toggle_help(ctx: &Context, menu: &mut Menu<'_>, _: Reaction) -> Res
             m
         })
         .await?;
-    log::debug!("Help message displayed");
+    tracing::debug!("Help message displayed");
     show_help.store(true, Ordering::Relaxed);
 
     Ok(())
 }
 
 /// Displays the menu page
+#[tracing::instrument(level = "debug", skip_all)]
 pub async fn display_page(ctx: &Context, menu: &mut Menu<'_>) -> Result<()> {
-    log::debug!("Displaying page {}", menu.current_page);
+    tracing::debug!("Displaying page {}", menu.current_page);
     let page = menu
         .pages
         .get(menu.current_page)
@@ -126,7 +128,7 @@ pub async fn display_page(ctx: &Context, menu: &mut Menu<'_>) -> Result<()> {
         e
     })
     .await?;
-    log::debug!("Page displayed");
+    tracing::debug!("Page displayed");
 
     Ok(())
 }

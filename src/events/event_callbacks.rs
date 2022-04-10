@@ -10,6 +10,7 @@ use tokio::time::Duration;
 static UPDATE_INTERVAL_SECS: u64 = 5;
 
 /// Starts the loop to handle message updates
+#[tracing::instrument(level = "debug", skip(ctx))]
 pub async fn start_update_loop(ctx: &Context) -> Result<()> {
     let event_messages = get_listeners_from_context(ctx)
         .await
@@ -19,7 +20,7 @@ pub async fn start_update_loop(ctx: &Context) -> Result<()> {
     tokio::task::spawn(async move {
         loop {
             {
-                log::trace!("Locking listener from update loop.");
+                tracing::debug!("Updating messages...");
                 let messages = {
                     let msgs_lock = event_messages.lock().await;
 
@@ -28,13 +29,12 @@ pub async fn start_update_loop(ctx: &Context) -> Result<()> {
                         .map(|(k, v)| (*k, v.clone()))
                         .collect::<Vec<(MessageHandle, MessageRef)>>()
                 };
-                log::trace!("Listener locked.");
                 let mut frozen_messages = Vec::new();
 
                 for (key, msg) in messages {
                     let mut msg = msg.lock().await;
                     if let Err(e) = msg.update(&http).await {
-                        log::error!("Failed to update message: {:?}", e);
+                        tracing::error!("Failed to update message: {:?}", e);
                     }
                     if msg.is_frozen() {
                         frozen_messages.push(key);
@@ -46,8 +46,8 @@ pub async fn start_update_loop(ctx: &Context) -> Result<()> {
                         msgs_lock.remove(&key);
                     }
                 }
+                tracing::debug!("Messages updated");
             }
-            log::trace!("Listener unlocked");
             tokio::time::sleep(Duration::from_secs(UPDATE_INTERVAL_SECS)).await;
         }
     });
@@ -56,6 +56,7 @@ pub async fn start_update_loop(ctx: &Context) -> Result<()> {
 }
 
 /// To be fired from the serenity handler when a message was deleted
+#[tracing::instrument(level = "debug", skip(ctx))]
 pub async fn handle_message_delete(
     ctx: &Context,
     channel_id: ChannelId,
@@ -64,9 +65,7 @@ pub async fn handle_message_delete(
     let mut affected_messages = Vec::new();
     {
         let listeners = get_listeners_from_context(ctx).await?;
-        log::trace!("Locking listener from handle_message_delete.");
         let mut listeners_lock = listeners.lock().await;
-        log::trace!("Listener locked.");
 
         let handle = MessageHandle::new(channel_id, message_id);
         if let Some(msg) = listeners_lock.get(&handle) {
@@ -74,7 +73,6 @@ pub async fn handle_message_delete(
             listeners_lock.remove(&handle);
         }
     }
-    log::trace!("Listener unlocked");
     for msg in affected_messages {
         let mut msg = msg.lock().await;
         msg.on_deleted(ctx).await?;
@@ -84,6 +82,7 @@ pub async fn handle_message_delete(
 }
 
 /// To be fired from the serenity handler when multiple messages were deleted
+#[tracing::instrument(level = "debug", skip(ctx))]
 pub async fn handle_message_delete_bulk(
     ctx: &Context,
     channel_id: ChannelId,
@@ -92,9 +91,7 @@ pub async fn handle_message_delete_bulk(
     let mut affected_messages = Vec::new();
     {
         let listeners = get_listeners_from_context(ctx).await?;
-        log::trace!("Locking listener from handle_message_delete_bulk.");
         let mut listeners_lock = listeners.lock().await;
-        log::trace!("Listener locked.");
 
         for message_id in message_ids {
             let handle = MessageHandle::new(channel_id, *message_id);
@@ -104,7 +101,6 @@ pub async fn handle_message_delete_bulk(
             }
         }
     }
-    log::trace!("Listener unlocked");
     for msg in affected_messages {
         let mut msg = msg.lock().await;
         msg.on_deleted(ctx).await?;
@@ -114,13 +110,12 @@ pub async fn handle_message_delete_bulk(
 }
 
 /// Fired when a reaction was added to a message
+#[tracing::instrument(level = "debug", skip(ctx))]
 pub async fn handle_reaction_add(ctx: &Context, reaction: &Reaction) -> Result<()> {
     let mut affected_messages = Vec::new();
     {
         let listeners = get_listeners_from_context(ctx).await?;
-        log::trace!("Locking listener from handle_reaction_add.");
         let mut listeners_lock = listeners.lock().await;
-        log::trace!("Listener locked.");
 
         let handle = MessageHandle::new(reaction.channel_id, reaction.message_id);
 
@@ -128,7 +123,6 @@ pub async fn handle_reaction_add(ctx: &Context, reaction: &Reaction) -> Result<(
             affected_messages.push(Arc::clone(&msg));
         }
     }
-    log::trace!("Listener unlocked");
     for msg in affected_messages {
         let mut msg = msg.lock().await;
         msg.on_reaction_add(ctx, reaction.clone()).await?;
@@ -138,13 +132,12 @@ pub async fn handle_reaction_add(ctx: &Context, reaction: &Reaction) -> Result<(
 }
 
 /// Fired when a reaction was added to a message
+#[tracing::instrument(level = "debug", skip(ctx))]
 pub async fn handle_reaction_remove(ctx: &Context, reaction: &Reaction) -> Result<()> {
     let mut affected_messages = Vec::new();
     {
         let listeners = get_listeners_from_context(ctx).await?;
-        log::trace!("Locking listener from handle_reaction_remove.");
         let mut listeners_lock = listeners.lock().await;
-        log::trace!("Listener locked.");
 
         let handle = MessageHandle::new(reaction.channel_id, reaction.message_id);
 
@@ -152,7 +145,6 @@ pub async fn handle_reaction_remove(ctx: &Context, reaction: &Reaction) -> Resul
             affected_messages.push(Arc::clone(&msg));
         }
     }
-    log::trace!("Listener unlocked");
     for msg in affected_messages {
         let mut msg = msg.lock().await;
         msg.on_reaction_remove(ctx, reaction.clone()).await?;

@@ -81,8 +81,8 @@ pub struct Menu<'a> {
 
 impl Menu<'_> {
     /// Removes all reactions from the menu
+    #[tracing::instrument(level = "debug", skip_all)]
     pub(crate) async fn close(&mut self, http: &Http) -> Result<()> {
-        log::debug!("Closing menu...");
         let handle = self.message.read().await;
         http.delete_message_reactions(handle.channel_id, handle.message_id)
             .await?;
@@ -101,14 +101,12 @@ impl Menu<'_> {
     }
 
     /// Recreates the message completely
+    #[tracing::instrument(level = "debug", skip_all)]
     pub async fn recreate(&self, http: &Http) -> Result<()> {
-        log::debug!("Recreating message");
-
         let old_handle = {
             let handle = self.message.read().await;
             (*handle).clone()
         };
-        log::debug!("Getting current page");
         let current_page = self
             .pages
             .get(self.current_page)
@@ -117,7 +115,6 @@ impl Menu<'_> {
             .get()
             .await?;
 
-        log::debug!("Creating new message");
         let message = http
             .send_message(
                 old_handle.channel_id,
@@ -139,7 +136,6 @@ impl Menu<'_> {
             )
             .await?;
         }
-        log::trace!("New message is {:?}", message);
 
         let new_handle = {
             let mut handle = self.message.write().await;
@@ -147,15 +143,14 @@ impl Menu<'_> {
             (*handle).clone()
         };
         {
-            log::debug!("Changing key of message");
+            tracing::debug!("Changing key of message");
             let mut listeners_lock = self.listeners.lock().await;
             let menu = listeners_lock.remove(&old_handle).unwrap();
             listeners_lock.insert(new_handle, menu);
         }
-        log::debug!("Deleting original message");
+        tracing::debug!("Deleting original message");
         http.delete_message(old_handle.channel_id, old_handle.message_id)
             .await?;
-        log::debug!("Message recreated");
 
         Ok(())
     }
@@ -167,13 +162,14 @@ impl<'a> EventDrivenMessage for Menu<'a> {
         self.closed
     }
 
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn update(&mut self, http: &Http) -> Result<()> {
-        log::trace!("Checking for menu timeout");
+        tracing::trace!("Checking for menu timeout");
         if Instant::now() >= self.timeout {
-            log::debug!("Menu timout reached. Closing menu.");
+            tracing::debug!("Menu timout reached. Closing menu.");
             self.close(http).await?;
         } else if self.sticky {
-            log::debug!("Message is sticky. Checking for new messages in channel...");
+            tracing::debug!("Message is sticky. Checking for new messages in channel...");
             let handle = {
                 let handle = self.message.read().await;
                 (*handle).clone()
@@ -183,9 +179,8 @@ impl<'a> EventDrivenMessage for Menu<'a> {
             let messages = channel_id
                 .messages(http, |p| p.after(handle.message_id).limit(1))
                 .await?;
-            log::trace!("Messages are {:?}", messages);
             if messages.len() > 0 {
-                log::debug!("New messages in channel. Recreating...");
+                tracing::debug!("New messages in channel. Recreating...");
                 self.recreate(http).await?;
             }
         }
@@ -193,26 +188,28 @@ impl<'a> EventDrivenMessage for Menu<'a> {
         Ok(())
     }
 
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn on_reaction_add(&mut self, ctx: &Context, reaction: Reaction) -> Result<()> {
-        log::debug!("Reaction to menu added");
         let current_user = ctx.http.get_current_user().await?;
 
         if reaction.user_id.unwrap().0 == current_user.id.0 {
-            log::debug!("Reaction is from current user.");
+            tracing::debug!("Reaction is from current user.");
             return Ok(());
         }
         let emoji_string = reaction.emoji.as_data();
 
-        log::debug!("Deleting user reaction.");
+        tracing::debug!("Deleting user reaction.");
         reaction.delete(ctx).await?;
         if let Some(owner) = self.owner {
             if owner != reaction.user_id.unwrap() {
-                log::debug!("Menu has an owner and the reaction is not from the owner of the menu");
+                tracing::debug!(
+                    "Menu has an owner and the reaction is not from the owner of the menu"
+                );
                 return Ok(());
             }
         }
         if let Some(control) = self.controls.get(&emoji_string).cloned() {
-            log::debug!("Running control");
+            tracing::debug!("Running control");
             control.run(ctx, self, reaction).await?;
         }
 
@@ -249,8 +246,8 @@ impl Default for MenuBuilder {
 
 impl MenuBuilder {
     /// Creates a new pagination menu
+    #[tracing::instrument(level = "debug", skip_all)]
     pub fn new_paginator() -> Self {
-        log::debug!("Creating new paginator");
         let mut controls = HashMap::new();
         let mut help_entries = HashMap::new();
         controls.insert(
@@ -391,12 +388,12 @@ impl MenuBuilder {
     }
 
     /// builds the menu
+    #[tracing::instrument(level = "debug", skip_all)]
     pub async fn build(
         self,
         ctx: &Context,
         channel_id: ChannelId,
     ) -> Result<Arc<RwLock<MessageHandle>>> {
-        log::debug!("Building menu...");
         let mut current_page = self
             .pages
             .get(self.current_page)
@@ -406,9 +403,8 @@ impl MenuBuilder {
             .await?;
 
         let message = channel_id.send_message(ctx, |_| &mut current_page).await?;
-        log::trace!("Message is {:?}", message);
         let listeners = get_listeners_from_context(ctx).await?;
-        log::debug!("Sorting controls...");
+        tracing::debug!("Sorting controls...");
         let mut controls = self
             .controls
             .clone()
@@ -416,7 +412,7 @@ impl MenuBuilder {
             .collect::<Vec<(String, ActionContainer)>>();
         controls.sort_by_key(|(_, a)| a.position);
 
-        log::debug!("Creating menu...");
+        tracing::debug!("Creating menu...");
         let message_handle = MessageHandle::new(message.channel_id, message.id);
         let handle_lock = Arc::new(RwLock::new(message_handle));
 
@@ -434,20 +430,19 @@ impl MenuBuilder {
             owner: self.owner,
         };
 
-        log::debug!("Storing menu to listeners...");
+        tracing::debug!("Storing menu to listeners...");
         {
             let mut listeners_lock = listeners.lock().await;
-            log::trace!("Listeners locked.");
+            tracing::trace!("Listeners locked.");
             listeners_lock.insert(message_handle, Arc::new(Mutex::new(Box::new(menu))));
         }
 
-        log::debug!("Adding controls...");
+        tracing::debug!("Adding controls...");
         for (emoji, _) in controls {
             message
                 .react(ctx, ReactionType::Unicode(emoji.clone()))
                 .await?;
         }
-        log::debug!("Menu successfully created.");
 
         Ok(handle_lock)
     }

@@ -49,6 +49,7 @@ pub struct RichEventHandler {
 
 impl RichEventHandler {
     /// Handles a generic event
+    #[tracing::instrument(level = "debug", skip_all)]
     async fn handle_event<T: 'static + Send + Sync>(&self, ctx: Context, value: T) {
         let callbacks = self.callbacks.clone();
 
@@ -58,7 +59,7 @@ impl RichEventHandler {
                 for callback in callbacks {
                     if let Some(cb) = callback.downcast_ref::<EventCallback<T>>() {
                         if let Err(e) = cb.run(&ctx, &value).await {
-                            log::error!("Error in event callback: {:?}", e);
+                            tracing::error!("Error in event callback: {:?}", e);
                         }
                     }
                 }

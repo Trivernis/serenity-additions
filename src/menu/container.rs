@@ -16,11 +16,11 @@ impl TypeMapKey for EventDrivenMessageContainer {
     type Value = EventDrivenMessagesRef;
 }
 
+#[tracing::instrument(level = "trace", skip(ctx))]
 pub async fn get_listeners_from_context(ctx: &Context) -> Result<EventDrivenMessagesRef> {
     let data = ctx.data.read().await;
     let listeners = data
         .get::<EventDrivenMessageContainer>()
         .ok_or(Error::Uninitialized)?;
-    log::trace!("Returning listener");
     Ok(listeners.clone())
 }
