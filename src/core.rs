@@ -75,7 +75,7 @@ pub trait RegisterAdditions {
     fn register_serenity_additions_with(self, rich_handler: RichEventHandler) -> Self;
 }
 
-impl<'a> RegisterAdditions for ClientBuilder<'a> {
+impl RegisterAdditions for ClientBuilder {
     /// Registers the rich interactions configuration on the client
     fn register_serenity_additions(self) -> Self {
         self.register_serenity_additions_with(RichEventHandler::default())

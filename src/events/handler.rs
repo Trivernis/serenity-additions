@@ -11,6 +11,19 @@ use std::future::Future;
 use std::pin::Pin;
 use std::sync::Arc;
 
+macro_rules! handle_events {
+    (
+        match $evt:ident {
+            $($variant:pat) | + => $handle_call:expr,
+        }
+    ) => {
+        match $evt {
+            $($variant => $handle_call),+,
+            _ => {},
+        }
+    }
+}
+
 pub struct EventCallback<T> {
     inner: Arc<
         dyn for<'a> Fn(
@@ -34,6 +47,7 @@ impl<T> EventCallback<T> {
 /// use serenity_additions::events::RichEventHandler;
 /// use serenity::model::event;
 /// use serenity::client::Client;
+/// use serenity::prelude::GatewayIntents;
 /// use serenity_additions::RegisterAdditions;
 /// # async fn a() -> serenity_additions::Result<()> {
 ///
@@ -42,7 +56,7 @@ impl<T> EventCallback<T> {
 ///     println!("Ready event received");
 ///     Ok(())
 /// }));
-/// let client = Client::builder("TOKEN").register_serenity_additions_with(handler).await?;
+/// let client = Client::builder("TOKEN", GatewayIntents::default()).register_serenity_additions_with(handler).await?;
 /// // ...
 /// # unimplemented!()
 /// # }
@@ -130,46 +144,58 @@ impl Default for RichEventHandler {
 #[async_trait]
 impl RawEventHandler for RichEventHandler {
     async fn raw_event(&self, ctx: Context, event: Event) {
-        match event {
-            Event::ChannelCreate(e) => self.handle_event(ctx, e).await,
-            Event::ChannelDelete(e) => self.handle_event(ctx, e).await,
-            Event::ChannelPinsUpdate(e) => self.handle_event(ctx, e).await,
-            Event::ChannelUpdate(e) => self.handle_event(ctx, e).await,
-            Event::GuildBanAdd(e) => self.handle_event(ctx, e).await,
-            Event::GuildBanRemove(e) => self.handle_event(ctx, e).await,
-            Event::GuildCreate(e) => self.handle_event(ctx, e).await,
-            Event::GuildDelete(e) => self.handle_event(ctx, e).await,
-            Event::GuildEmojisUpdate(e) => self.handle_event(ctx, e).await,
-            Event::GuildIntegrationsUpdate(e) => self.handle_event(ctx, e).await,
-            Event::GuildMemberAdd(e) => self.handle_event(ctx, e).await,
-            Event::GuildMemberRemove(e) => self.handle_event(ctx, e).await,
-            Event::GuildMemberUpdate(e) => self.handle_event(ctx, e).await,
-            Event::GuildMembersChunk(e) => self.handle_event(ctx, e).await,
-            Event::GuildRoleCreate(e) => self.handle_event(ctx, e).await,
-            Event::GuildRoleDelete(e) => self.handle_event(ctx, e).await,
-            Event::GuildRoleUpdate(e) => self.handle_event(ctx, e).await,
-            Event::GuildUnavailable(e) => self.handle_event(ctx, e).await,
-            Event::GuildUpdate(e) => self.handle_event(ctx, e).await,
-            Event::InviteCreate(e) => self.handle_event(ctx, e).await,
-            Event::InviteDelete(e) => self.handle_event(ctx, e).await,
-            Event::MessageCreate(e) => self.handle_event(ctx, e).await,
-            Event::MessageDelete(e) => self.handle_event(ctx, e).await,
-            Event::MessageDeleteBulk(e) => self.handle_event(ctx, e).await,
-            Event::MessageUpdate(e) => self.handle_event(ctx, e).await,
-            Event::PresenceUpdate(e) => self.handle_event(ctx, e).await,
-            Event::PresencesReplace(e) => self.handle_event(ctx, e).await,
-            Event::ReactionAdd(e) => self.handle_event(ctx, e).await,
-            Event::ReactionRemove(e) => self.handle_event(ctx, e).await,
-            Event::ReactionRemoveAll(e) => self.handle_event(ctx, e).await,
-            Event::Ready(e) => self.handle_event(ctx, e).await,
-            Event::Resumed(e) => self.handle_event(ctx, e).await,
-            Event::TypingStart(e) => self.handle_event(ctx, e).await,
-            Event::UserUpdate(e) => self.handle_event(ctx, e).await,
-            Event::VoiceStateUpdate(e) => self.handle_event(ctx, e).await,
-            Event::VoiceServerUpdate(e) => self.handle_event(ctx, e).await,
-            Event::WebhookUpdate(e) => self.handle_event(ctx, e).await,
-            Event::Unknown(e) => self.handle_event(ctx, e).await,
-            _ => {}
-        }
+        handle_events!(match event {
+            Event::ChannelCreate(e)
+            | Event::ChannelDelete(e)
+            | Event::ChannelPinsUpdate(e)
+            | Event::ChannelUpdate(e)
+            | Event::GuildBanAdd(e)
+            | Event::GuildBanRemove(e)
+            | Event::GuildCreate(e)
+            | Event::GuildDelete(e)
+            | Event::GuildEmojisUpdate(e)
+            | Event::GuildIntegrationsUpdate(e)
+            | Event::GuildMemberAdd(e)
+            | Event::GuildMemberRemove(e)
+            | Event::GuildMemberUpdate(e)
+            | Event::GuildMembersChunk(e)
+            | Event::GuildRoleCreate(e)
+            | Event::GuildRoleDelete(e)
+            | Event::GuildRoleUpdate(e)
+            | Event::GuildUnavailable(e)
+            | Event::GuildUpdate(e)
+            | Event::InviteCreate(e)
+            | Event::InviteDelete(e)
+            | Event::MessageCreate(e)
+            | Event::MessageDelete(e)
+            | Event::MessageDeleteBulk(e)
+            | Event::MessageUpdate(e)
+            | Event::PresenceUpdate(e)
+            | Event::PresencesReplace(e)
+            | Event::ReactionAdd(e)
+            | Event::ReactionRemove(e)
+            | Event::ReactionRemoveAll(e)
+            | Event::Ready(e)
+            | Event::Resumed(e)
+            | Event::TypingStart(e)
+            | Event::UserUpdate(e)
+            | Event::VoiceStateUpdate(e)
+            | Event::VoiceServerUpdate(e)
+            | Event::WebhookUpdate(e)
+            | Event::Unknown(e)
+            | Event::InteractionCreate(e)
+            | Event::IntegrationCreate(e)
+            | Event::IntegrationUpdate(e)
+            | Event::IntegrationDelete(e)
+            | Event::StageInstanceCreate(e)
+            | Event::StageInstanceUpdate(e)
+            | Event::StageInstanceDelete(e)
+            | Event::ThreadCreate(e)
+            | Event::ThreadUpdate(e)
+            | Event::ThreadDelete(e)
+            | Event::ThreadListSync(e)
+            | Event::ThreadMemberUpdate(e)
+            | Event::ThreadMembersUpdate(e) => self.handle_event(ctx, e).await,
+        });
     }
 }

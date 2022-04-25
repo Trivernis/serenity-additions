@@ -8,13 +8,9 @@ You have to register the module in the serenity client builder.
 ```rust
 use serenity::client::Client;
 use serenity_additions::RegisterRichInteractions;
+use serenity::prelude::GatewayIntents;
 
-#[tokio::main]
-async fn get_client {
-    // stuff
-    let client = Client::builder("TOKEN").register_serenity_additions().await?;
-    // stuff
-}
+let client = Client::builder("TOKEN", GatewayIntends::default()).register_serenity_additions()
 ```
 
 ## Menu
@@ -23,7 +19,7 @@ async fn get_client {
 use serenity::builder::CreateMessage;
 use serenity::client::Context;
 use serenity::model::id::ChannelId;
-use serenity_rich_interaction::menu::{MenuBuilder, Page};
+use serenity_additions::menu::{MenuBuilder, Page};
 use std::time::Duration;
 use serenity_additions::Result;
 
