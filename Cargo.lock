@@ -1090,7 +1090,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "serenity-rich-interaction"
+name = "serenity-additions"
 version = "0.3.0"
 dependencies = [
  "dashmap",

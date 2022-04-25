@@ -70,19 +70,19 @@ impl MessageHandle {
     }
 }
 
-pub trait RegisterRichInteractions {
-    fn register_rich_interactions(self) -> Self;
-    fn register_rich_interactions_with(self, rich_handler: RichEventHandler) -> Self;
+pub trait RegisterAdditions {
+    fn register_serenity_additions(self) -> Self;
+    fn register_serenity_additions_with(self, rich_handler: RichEventHandler) -> Self;
 }
 
-impl<'a> RegisterRichInteractions for ClientBuilder<'a> {
+impl<'a> RegisterAdditions for ClientBuilder<'a> {
     /// Registers the rich interactions configuration on the client
-    fn register_rich_interactions(self) -> Self {
-        self.register_rich_interactions_with(RichEventHandler::default())
+    fn register_serenity_additions(self) -> Self {
+        self.register_serenity_additions_with(RichEventHandler::default())
     }
 
     /// Registers the rich interactions with a custom rich event handler
-    fn register_rich_interactions_with(self, rich_handler: RichEventHandler) -> Self {
+    fn register_serenity_additions_with(self, rich_handler: RichEventHandler) -> Self {
         self.type_map_insert::<EventDrivenMessageContainer>(Arc::new(DashMap::new()))
             .raw_event_handler(rich_handler)
     }

@@ -31,18 +31,21 @@ impl<T> EventCallback<T> {
 
 /// A handler for raw serenity events
 /// ```
-/// use serenity_rich_interaction::events::RichEventHandler;
+/// use serenity_additions::events::RichEventHandler;
 /// use serenity::model::event;
 /// use serenity::client::Client;
-/// use serenity_rich_interaction::RegisterRichInteractions;
+/// use serenity_additions::RegisterAdditions;
+/// # async fn a() -> serenity_additions::Result<()> {
 ///
 /// let mut handler = RichEventHandler::default();
 /// handler.add_event(|ctx, e: &event::ReadyEvent| Box::pin(async move {
 ///     println!("Ready event received");
 ///     Ok(())
 /// }));
-/// let client = Client::builder("TOKEN").register_rich_interactions_with(handler).await?;
+/// let client = Client::builder("TOKEN").register_serenity_additions_with(handler).await?;
 /// // ...
+/// # unimplemented!()
+/// # }
 /// ```
 pub struct RichEventHandler {
     callbacks: HashMap<TypeId, Vec<Arc<dyn Any + Send + Sync>>>,

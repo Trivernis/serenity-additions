@@ -1,4 +1,4 @@
-# Serenity Rich Interaction
+# Serenity Additions
 
 This crate provides some types for rich interactions with serenity such as Menus and Ephemeral (self deleting) Messages.
 
@@ -7,12 +7,12 @@ This crate provides some types for rich interactions with serenity such as Menus
 You have to register the module in the serenity client builder.
 ```rust
 use serenity::client::Client;
-use serenity_rich_interaction::RegisterRichInteractions;
+use serenity_additions::RegisterRichInteractions;
 
 #[tokio::main]
 async fn get_client {
     // stuff
-    let client = Client::builder("TOKEN").register_rich_interactions().await?;
+    let client = Client::builder("TOKEN").register_serenity_additions().await?;
     // stuff
 }
 ```
@@ -25,7 +25,7 @@ use serenity::client::Context;
 use serenity::model::id::ChannelId;
 use serenity_rich_interaction::menu::{MenuBuilder, Page};
 use std::time::Duration;
-use serenity_rich_interaction::Result;
+use serenity_additions::Result;
 
 pub async fn create_menu(
     ctx: &Context,
@@ -51,9 +51,9 @@ pub async fn create_menu(
 ## Ephemeral Message
 
 ```rust
-use serenity_rich_interaction::core::SHORT_TIMEOUT;
-use serenity_rich_interaction::ephemeral_message::EphemeralMessage;
-use serenity_rich_interaction::Result;
+use serenity_additions::core::SHORT_TIMEOUT;
+use serenity_additions::ephemeral_message::EphemeralMessage;
+use serenity_additions::Result;
 use serenity::client::Context;
 use serenity::model::id::ChannelId;
 
