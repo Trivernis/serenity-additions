@@ -110,10 +110,7 @@ impl<'a> Menu<'a> {
     /// Recreates the message completely
     #[tracing::instrument(level = "debug", skip_all)]
     pub async fn recreate(&self, http: &Http) -> Result<()> {
-        let old_handle = {
-            let handle = self.message.read().await;
-            (*handle).clone()
-        };
+        let old_handle = self.get_handle().await;
         let current_page = self.get_current_page()?.get().await?;
 
         let message = http
@@ -140,6 +137,7 @@ impl<'a> Menu<'a> {
         {
             tracing::debug!("Changing key of message");
             let menu = self.listeners.remove(&old_handle).unwrap();
+            tracing::debug!("Inserting new key");
             self.listeners.insert(new_handle, menu.1);
         }
         tracing::debug!("Deleting original message");
@@ -147,6 +145,13 @@ impl<'a> Menu<'a> {
             .await?;
 
         Ok(())
+    }
+
+    /// Returns the handle of the menus message
+    /// Locking behaviour: May deadlock when already holding a lock to [Self::messages]
+    async fn get_handle(&self) -> MessageHandle {
+        let handle = self.message.read().await;
+        (*handle).clone()
     }
 }
 
@@ -166,10 +171,7 @@ impl<'a> EventDrivenMessage for Menu<'a> {
         } else if self.sticky {
             tracing::debug!("Message is sticky. Checking for new messages in channel...");
 
-            let handle = {
-                let handle = self.message.read().await;
-                (*handle).clone()
-            };
+            let handle = self.get_handle().await;
             let channel_id = ChannelId(handle.channel_id);
             let messages = channel_id
                 .messages(http, |p| p.after(handle.message_id).limit(1))

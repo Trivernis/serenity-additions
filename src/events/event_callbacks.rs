@@ -23,13 +23,16 @@ pub async fn start_update_loop(ctx: &Context) -> Result<()> {
                 tracing::trace!("Updating messages...");
                 let mut frozen_messages = Vec::new();
 
-                for entry in event_messages.iter() {
-                    let mut msg = entry.value().lock().await;
+                for (key, value) in event_messages
+                    .iter()
+                    .map(|e| (e.key().clone(), e.value().clone()))
+                {
+                    let mut msg = value.lock().await;
                     if let Err(e) = msg.update(&http).await {
                         tracing::error!("Failed to update message: {:?}", e);
                     }
                     if msg.is_frozen() {
-                        frozen_messages.push(*entry.key());
+                        frozen_messages.push(key);
                     }
                 }
                 for key in frozen_messages {
