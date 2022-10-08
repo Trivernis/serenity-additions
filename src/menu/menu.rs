@@ -13,6 +13,7 @@ use serenity::model::id::{ChannelId, UserId};
 use serenity::prelude::{TypeMap, TypeMapKey};
 use std::collections::HashMap;
 use std::future::Future;
+use std::mem;
 use std::pin::Pin;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
@@ -400,8 +401,15 @@ impl MenuBuilder {
             .clone()
             .get()
             .await?;
+        tracing::trace!("current_page = {:?}", current_page);
 
-        let message = channel_id.send_message(ctx, |_| &mut current_page).await?;
+        let message = channel_id
+            .send_message(ctx, |msg| {
+                mem::swap(msg, &mut current_page);
+                msg
+            })
+            .await?;
+        tracing::trace!("message = {:?}", current_page);
 
         tracing::debug!("Sorting controls...");
         let mut controls = self
